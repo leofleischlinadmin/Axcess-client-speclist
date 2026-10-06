@@ -4,7 +4,7 @@ import { getUser, admin as idAdmin } from "@netlify/identity";
 const J = (o, s = 200) => Response.json(o, { status: s });
 const ID = /^[\w-]+$/;
 
-export default async (req) => {
+export default async (req, context) => {
   const u = await getUser();
   if (!u) return J({ error: "Sign in required" }, 401);
   const admin = (u.roles || []).includes("admin");
@@ -18,8 +18,24 @@ export default async (req) => {
     if (!admin || req.method !== "POST") return J({ error: "Not allowed" }, 403);
     const { email, password } = await req.json();
     if (!email || !password || password.length < 8) return J({ error: "Enter an email and a password of at least 8 characters." }, 400);
-    try { await idAdmin.createUser({ email, password, confirm: true }); return J({ ok: true }); }
-    catch (e) { return J({ error: e.message || "Could not create the user." }, 400); }
+    const ident = context && context.clientContext && context.clientContext.identity;
+    const how = ident && ident.url && ident.token ? "context" : "library";
+    try {
+      if (how === "context") {
+        const tok = typeof ident.token === "string" ? ident.token : ident.token.access_token;
+        const r = await fetch(ident.url + "/admin/users", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, confirm: true }),
+        });
+        if (!r.ok) throw new Error("Identity returned " + r.status + ": " + (await r.text()).slice(0, 200));
+      } else {
+        await idAdmin.createUser({ email, password, confirm: true });
+      }
+      return J({ ok: true });
+    } catch (e) {
+      return J({ error: "[" + how + "] " + (e.message || "Could not create the user.") }, 400);
+    }
   }
 
   // list / create projects
