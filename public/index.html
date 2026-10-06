@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Client Selections | Axcess Construction Management Services</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="/auth.js"></script>
 <style>
@@ -106,7 +106,7 @@ const D={"divs":{"01":"General Requirements","02":"Existing Conditions","03":"Co
 const KEY="spec_sheet_client_v1";
 const F=[["p","Preference / Description","w"],["m","Manufacturer"],["l","Product Line"],["s","Model / SKU"],["f","Finish / Color"],["z","Size / Dimensions"],["u","Source / URL"],["b","Known Budget / Price"],["n","Notes","w"]];
 const COMMON=["Kitchen","Primary Bedroom","Primary Bath","Living Room","Dining Room","Family Room","Entry / Foyer","Powder Room","Bedroom 2","Bedroom 3","Bathroom 2","Laundry","Mudroom","Home Office","Pantry","Garage","Basement","Outdoor / Patio","Whole House","Exterior"];
-let S=blank(),PID=null,PN="",V="login",ME=null,PL=[],ADM=false;
+let S=blank(),PID=null,PN="",V="login",ME=null,PL=[];
 function blank(){return {rooms:[],d:{},ph:{},step:"rooms",cat:0,q:"",flt:"all"}}
 async function api(m,u,b){const r=await fetch(u,{method:m,headers:b?{"Content-Type":"application/json"}:{},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Request failed");return r.json()}
 let t,dirty=false;
@@ -181,20 +181,45 @@ function rows(){const H=["Division","Category","Item / Selection","Room / Locati
  return [H,...D.items.map((it,i)=>{const r=S.d[i]||{};return [it[0],it[1],it[2],(r.r||[]).join(", "),r.k==="No"?"No":r.k||"",r.p||"",r.m||"",r.l||"",r.s||"",r.f||"",r.z||"",r.u||"",r.b||"",r.n||"",(P[i]||[]).map((p,k)=>pname(i,k)).join(", "),(r.o||[]).map(k=>((R[i]||[])[k]||{}).l||"Option "+(k+1)).join(", ")]})]}
 let dl=null;
 (async()=>{try{dl=await claude.use("downloads")}catch(e){}if(!dl)dl={save:async({filename:n,data:d})=>{const u=URL.createObjectURL(d instanceof Blob?d:new Blob([d]));const a=document.createElement("a");a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}};const b=$("#exp");b.hidden=false})();
-$("#exp").onclick=async()=>{const b=$("#exp"),R=rows();
- try{if(dl){const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(R);ws["!cols"]=[6,28,36,24,12,34,18,18,16,18,16,26,14,34,32,32].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,"Sheet1");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Rooms"],...S.rooms.map(r=>[r])]),"Rooms");
-  const x=XLSX.write(wb,{type:"array",bookType:"xlsx"});
-  if(Object.values(P).some(a=>a.length)){const z=new JSZip();z.file("Spec_Sheet_Client_Input.xlsx",x);await Promise.all(Object.keys(P).flatMap(i=>P[i].map(async(p,k)=>z.file(pname(i,k),await (await fetch(p.url)).blob()))));await dl.save({filename:"Spec_Sheet_Client_Input.zip",data:await z.generateAsync({type:"blob"})})}
-  else await dl.save({filename:"Spec_Sheet_Client_Input.xlsx",data:x})}
-  else{await navigator.clipboard.writeText(R.map(r=>r.join("\t")).join("\n"));b.textContent="Copied. Paste into Excel."}}
- catch(e){if(!e||e.code!=="declined")b.textContent="Export unavailable here"}};
+$("#exp").onclick=async()=>{const b=$("#exp"),lab=b.textContent;b.textContent="Preparing...";
+ try{
+  const N="FF1018A6",INK="FF16213E",SOFT="FFE4ECF8",LN="FFDCE6F0",F="Arial";
+  const wb=new ExcelJS.Workbook();wb.creator="Axcess Construction Management Services, Inc";
+  const head=r=>{r.height=26;r.eachCell(c=>{c.font={name:F,bold:true,size:11,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:N}};c.alignment={vertical:"middle",wrapText:true}})};
+  const body=r=>r.eachCell({includeEmpty:true},c=>{c.font={name:F,size:10.5,color:{argb:INK}};c.alignment={vertical:"top",wrapText:true};c.border={bottom:{style:"thin",color:{argb:LN}}}});
+  const rec=i=>S.d[i]||{};
+  const vals=i=>{const r=rec(i);return [D.items[i][2],(r.r||[]).join(", "),r.k==="Yes"?"Yes":r.k==="No"?"Not yet":"",r.p||"",r.m||"",r.l||"",r.s||"",r.f||"",r.z||"",r.u||"",r.b||"",r.n||"",(r.o||[]).map(k=>((R[i]||[])[k]||{}).l||"Option "+(k+1)).join(", ")]};
+  const done=D.items.map((_,i)=>i).filter(touched);
+  const ws=wb.addWorksheet("Selections",{views:[{state:"frozen",ySplit:4,showGridLines:false}],pageSetup:{orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0}});
+  ws.columns=[34,24,14,34,20,18,18,18,18,26,14,34,24,16].map(w=>({width:w}));
+  ws.getCell("A1").value="Client selections";ws.getCell("A1").font={name:"Times New Roman",size:22,bold:true,color:{argb:N}};ws.getRow(1).height=34;
+  ws.getCell("A2").value=PN+"   |   "+new Date().toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});ws.getCell("A2").font={name:F,size:12,color:{argb:INK}};
+  ws.getCell("A3").value=done.length+" of "+total+" items noted";ws.getCell("A3").font={name:F,size:10.5,italic:true,color:{argb:"FF5B6D87"}};
+  try{const id=wb.addImage({base64:document.querySelector(".logo").src,extension:"png"});ws.addImage(id,{tl:{col:12.2,row:0.1},ext:{width:100,height:72}})}catch(x){}
+  head(ws.addRow(["Item","Room / Location","Already know?","Preference / Description","Manufacturer","Product Line","Model / SKU","Finish / Color","Size / Dimensions","Source / URL","Known budget","Notes","Liked designer options","Photo"]));
+  let last="";
+  for(const i of done){const it=D.items[i],key=it[0]+"|"+it[1];
+   if(key!==last){last=key;const sr=ws.addRow([it[0]+"  \u00b7  "+D.divs[it[0]]+"  \u00b7  "+it[1]]);ws.mergeCells(sr.number,1,sr.number,14);const c=sr.getCell(1);c.font={name:F,bold:true,size:11,color:{argb:N}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:SOFT}};c.alignment={vertical:"middle"};sr.height=22}
+   const row=ws.addRow(vals(i));body(row);row.getCell(1).font={name:F,bold:true,size:10.5,color:{argb:INK}};
+   const k=rec(i).k;if(k==="Yes")row.getCell(3).font={name:F,bold:true,size:10.5,color:{argb:"FF1F6B3A"}};else if(k==="No")row.getCell(3).font={name:F,size:10.5,color:{argb:"FF9A6700"}};
+   const ph=(P[i]||[])[0];if(ph){try{const buf=await (await fetch(ph.url)).arrayBuffer();const id=wb.addImage({buffer:buf,extension:"jpeg"});row.height=66;ws.addImage(id,{tl:{col:13.08,row:row.number-1+0.08},ext:{width:84,height:58}})}catch(x){}}}
+  if(!done.length){const r=ws.addRow(["No selections yet."]);r.getCell(1).font={name:F,italic:true,color:{argb:"FF5B6D87"}}}
+  const fs=wb.addWorksheet("Full spec sheet",{views:[{state:"frozen",ySplit:1}]});
+  fs.columns=[8,30,36,24,12,34,18,18,16,18,16,26,14,34].map(w=>({width:w}));
+  head(fs.addRow(["Division","Category","Item / Selection","Room / Location","Already know?","Preference / Description","Manufacturer","Product Line","Model / SKU","Finish / Color","Size / Dimensions","Source / URL","Known budget","Notes"]));
+  D.items.forEach((it,i)=>{const v=vals(i);body(fs.addRow([it[0],it[1],...v.slice(0,12)]))});
+  fs.autoFilter={from:{row:1,column:1},to:{row:1,column:14}};
+  const rs=wb.addWorksheet("Rooms");rs.columns=[{width:34}];head(rs.addRow(["Rooms"]));S.rooms.forEach(x=>body(rs.addRow([x])));
+  const buf=await wb.xlsx.writeBuffer(),base=(PN||"Selections").replace(/[^\w-]+/g,"_");
+  if(Object.values(P).some(a=>a.length)){const z=new JSZip();z.file(base+".xlsx",buf);await Promise.all(Object.keys(P).flatMap(i=>P[i].map(async(p,k)=>z.file(pname(i,k),await (await fetch(p.url)).blob()))));await dl.save({filename:base+".zip",data:await z.generateAsync({type:"blob"})})}
+  else await dl.save({filename:base+".xlsx",data:buf});
+ }catch(x){if(!x||x.code!=="declined")alert("Could not create the file: "+(x&&x.message||x))}
+ b.textContent=lab};
 function render(){document.body.dataset.v=V;$("#home").hidden=V!=="project";$("#out").hidden=V==="login";$("h1").textContent=V==="project"?PN:"Client Selections";if(V==="project")return renderProject();$("#main").innerHTML=V==="login"?loginHtml():V==="setpw"?setpwHtml():projHtml()}
 const loginHtml=()=>'<div class="rooms"><h2>Sign in to your projects</h2><p class="lead">Use the email your designer invited. First time? Create an account with that same email.</p><div class="login"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="add"><button class="btn" id="login">Log in</button><button class="btn ghost" id="signup">Create account</button><button class="nav2" id="forgot">Forgot password?</button></div><p class="lead" id="msg"></p></div></div>';
 const setpwHtml=()=>'<div class="rooms"><h2>Choose your password</h2><p class="lead">Pick a password you will use to sign in from now on. At least 8 characters.</p><div class="login"><input id="np" type="password" placeholder="New password" autocomplete="new-password"><input id="np2" type="password" placeholder="Repeat password" autocomplete="new-password"><div class="add"><button class="btn" id="setpw">Save password</button></div><p class="lead" id="msg"></p></div></div>';
-const gen=()=>{const c="abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";return Array.from(crypto.getRandomValues(new Uint8Array(12)),x=>c[x%c.length]).join("")};
-const adminPanel=()=>ADM?'<h3 style="margin:28px 0 8px;font-size:22px">Add a client account</h3><p class="lead">Creates a ready-to-use login. Share the email and password with your client.</p><div class="login"><input id="ue" type="email" placeholder="Client email"><input id="up" type="text" value="'+gen()+'"><div class="add"><button class="btn ghost" id="mkuser">Create account</button></div><p class="lead" id="umsg"></p></div>':"";
-const projHtml=()=>'<div class="rooms"><h2>Your projects</h2><p class="lead">'+esc(ME.email)+'</p><div class="add"><input id="pname" type="text" placeholder="New project name, e.g. Smith Residence"><button class="btn" id="newp">Create project</button></div>'+(PL.length?PL.map(p=>'<div class="prow"><button class="pcard" data-open="'+p.id+'" data-name="'+esc(p.name)+'"><b>'+esc(p.name)+'</b><span>'+(p.owner!==ME.id?esc(p.ownerEmail)+" \u00b7 ":"")+p.n+" of "+total+' items noted</span></button><button class="delp" data-delp="'+p.id+'" data-name="'+esc(p.name)+'" aria-label="Delete project">Delete</button></div>').join(""):'<p class="empty">No projects yet. Create your first one above.</p>')+adminPanel()+"</div>";
-async function showProjects(){V="projects";PID=null;try{PL=await api("GET","/api/projects")}catch(e){PL=[]}ADM=false;try{ADM=(await api("GET","/api/me")).admin}catch(e){}render()}
+const projHtml=()=>'<div class="rooms"><h2>Your projects</h2><p class="lead">'+esc(ME.email)+'</p><div class="add"><input id="pname" type="text" placeholder="New project name, e.g. Smith Residence"><button class="btn" id="newp">Create project</button></div>'+(PL.length?PL.map(p=>'<div class="prow"><button class="pcard" data-open="'+p.id+'" data-name="'+esc(p.name)+'"><b>'+esc(p.name)+'</b><span>'+(p.owner!==ME.id?esc(p.ownerEmail)+" \u00b7 ":"")+p.n+" of "+total+' items noted</span></button><button class="delp" data-delp="'+p.id+'" data-name="'+esc(p.name)+'" aria-label="Delete project">Delete</button></div>').join(""):'<p class="empty">No projects yet. Create your first one above.</p>')+"</div>";
+async function showProjects(){V="projects";PID=null;try{PL=await api("GET","/api/projects")}catch(e){PL=[]}render()}
 async function openP(id,name){try{const st=await api("GET","/api/projects/"+id);PID=id;PN=name;S=Object.assign(blank(),st);for(const k in P)delete P[k];Object.entries(S.ph).forEach(([i,a])=>{P[i]=a.map(x=>({id:x,url:"/api/photo/"+id+"/"+x}))});V="project";$("#sync").textContent="";render();scrollTo(0,0)}catch(e){alert("Could not open this project: "+e.message)}}
 M.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
  if(b.dataset.delp){if(!confirm('Delete "'+b.dataset.name+'" and all its photos? This cannot be undone.'))return;try{await api("DELETE","/api/projects/"+b.dataset.delp);await showProjects()}catch(x){alert(x.message)}return}
@@ -202,7 +227,6 @@ M.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)re
  if(b.id==="login"||b.id==="signup"){const m=$("#msg");m.textContent="One moment\u2026";try{const em=$("#em").value.trim(),pw=$("#pw").value;if(b.id==="login"){ME=await Auth.login(em,pw);await showProjects()}else{await Auth.signup(em,pw);m.textContent="Check your email for a confirmation link, then log in."}}catch(x){m.textContent=x.message||"Something went wrong. Check your email and password."}}
  if(b.id==="forgot"){const m=$("#msg"),em=$("#em").value.trim();if(!em){m.textContent="Type your email above first.";return}try{await Auth.requestPasswordRecovery(em)}catch(x){}m.textContent="If that email has an account, a reset link is on its way. Check spam too."}
  if(b.id==="setpw"){const m=$("#msg"),p=$("#np").value;if(p.length<8){m.textContent="Use at least 8 characters.";return}if(p!==$("#np2").value){m.textContent="The two passwords do not match.";return}try{await Auth.updateUser({password:p});await showProjects()}catch(x){m.textContent=x.message||"Could not save the password. Try the reset link again."}}
- if(b.id==="mkuser"){const m=$("#umsg"),em=$("#ue").value.trim(),pw=$("#up").value;m.textContent="Creating...";try{await api("POST","/.netlify/functions/create-user",{email:em,password:pw});m.textContent="Created. Send "+em+" this password: "+pw+" (they can change it later with Forgot password).";$("#ue").value=""}catch(x){m.textContent=x.message}}
  if(b.id==="newp"){const n=$("#pname").value.trim();if(n){try{const p=await api("POST","/api/projects",{name:n});openP(p.id,p.name)}catch(x){alert(x.message)}}}});
 $("#home").onclick=async()=>{clearTimeout(t);await push();showProjects()};
 $("#out").onclick=async()=>{clearTimeout(t);await push();try{await Auth.logout()}catch(e){}ME=null;PID=null;V="login";render()};
