@@ -1,5 +1,5 @@
 import { getStore } from "@netlify/blobs";
-import { getUser } from "@netlify/identity";
+import { getUser, admin as idAdmin } from "@netlify/identity";
 
 const J = (o, s = 200) => Response.json(o, { status: s });
 const ID = /^[\w-]+$/;
@@ -12,6 +12,15 @@ export default async (req) => {
   const [, , kind, pid, pho] = new URL(req.url).pathname.split("/");
   if ((pid && !ID.test(pid)) || (pho && !ID.test(pho))) return J({ error: "Bad id" }, 400);
   const can = (m) => m && (m.owner === u.id || admin);
+
+  if (kind === "me") return J({ admin });
+  if (kind === "users") {
+    if (!admin || req.method !== "POST") return J({ error: "Not allowed" }, 403);
+    const { email, password } = await req.json();
+    if (!email || !password || password.length < 8) return J({ error: "Enter an email and a password of at least 8 characters." }, 400);
+    try { await idAdmin.createUser({ email, password, confirm: true }); return J({ ok: true }); }
+    catch (e) { return J({ error: e.message || "Could not create the user." }, 400); }
+  }
 
   // list / create projects
   if (kind === "projects" && !pid) {
@@ -33,6 +42,13 @@ export default async (req) => {
   if (!can(m)) return J({ error: "Not found" }, 404);
 
   if (kind === "projects") {
+    if (req.method === "DELETE") {
+      const { blobs } = await photos.list({ prefix: pid + "/" });
+      await Promise.all(blobs.map((b) => photos.delete(b.key)));
+      await states.delete(pid);
+      await meta.delete("p/" + pid);
+      return J({ ok: true });
+    }
     if (req.method === "PUT") {
       const { state, n } = await req.json();
       await states.setJSON(pid, state);
