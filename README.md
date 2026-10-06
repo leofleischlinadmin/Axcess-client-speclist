@@ -11,6 +11,8 @@ Clients sign in, see their projects, create new ones, and fill in selections. Ev
 5. **Make yourself an admin.** Sign up / accept your own invite, open your user in Identity, and add the role `admin`. Admins see every client's projects (shown with the client's email); everyone else sees only their own.
 6. **Test with a second email** before sending anything to clients: create a project, add a photo, tick items, then check you can see it from your admin account.
 
+Invited clients open the acceptance link in their invitation email and choose a password (at least 8 characters, entered twice). Saving the password accepts the invitation and signs them in. They can then log in with their invited email and that password. If an invitation has expired, send a new invitation from Identity. Existing users can use **Forgot password?** to reset their password.
+
 ## Notes
 - Confirmation emails come from a generic Netlify address on the free plan. Branded emails need the Pro plan.
 - Roles take effect at the user's next login.
