@@ -198,12 +198,11 @@ $("#exp").onclick=async()=>{const b=$("#exp"),lab=b.textContent;b.textContent="P
   try{const id=wb.addImage({base64:document.querySelector(".logo").src,extension:"png"});ws.addImage(id,{tl:{col:12.2,row:0.1},ext:{width:100,height:72}})}catch(x){}
   head(ws.addRow(["Item","Room / Location","Already know?","Preference / Description","Manufacturer","Product Line","Model / SKU","Finish / Color","Size / Dimensions","Source / URL","Known budget","Notes","Liked designer options","Photo"]));
   let last="";
-  for(const i of done){const it=D.items[i],key=it[0]+"|"+it[1];
+  for(let i=0;i<D.items.length;i++){const it=D.items[i],key=it[0]+"|"+it[1];
    if(key!==last){last=key;const sr=ws.addRow([it[0]+"  \u00b7  "+D.divs[it[0]]+"  \u00b7  "+it[1]]);ws.mergeCells(sr.number,1,sr.number,14);const c=sr.getCell(1);c.font={name:F,bold:true,size:11,color:{argb:N}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:SOFT}};c.alignment={vertical:"middle"};sr.height=22}
-   const row=ws.addRow(vals(i));body(row);row.getCell(1).font={name:F,bold:true,size:10.5,color:{argb:INK}};
+   const row=ws.addRow(vals(i));body(row);row.getCell(1).font={name:F,bold:touched(i),size:10.5,color:{argb:INK}};
    const k=rec(i).k;if(k==="Yes")row.getCell(3).font={name:F,bold:true,size:10.5,color:{argb:"FF1F6B3A"}};else if(k==="No")row.getCell(3).font={name:F,size:10.5,color:{argb:"FF9A6700"}};
    const ph=(P[i]||[])[0];if(ph){try{const buf=await (await fetch(ph.url)).arrayBuffer();const id=wb.addImage({buffer:buf,extension:"jpeg"});row.height=66;ws.addImage(id,{tl:{col:13.08,row:row.number-1+0.08},ext:{width:84,height:58}})}catch(x){}}}
-  if(!done.length){const r=ws.addRow(["No selections yet."]);r.getCell(1).font={name:F,italic:true,color:{argb:"FF5B6D87"}}}
   const fs=wb.addWorksheet("Full spec sheet",{views:[{state:"frozen",ySplit:1}]});
   fs.columns=[8,30,36,24,12,34,18,18,16,18,16,26,14,34].map(w=>({width:w}));
   head(fs.addRow(["Division","Category","Item / Selection","Room / Location","Already know?","Preference / Description","Manufacturer","Product Line","Model / SKU","Finish / Color","Size / Dimensions","Source / URL","Known budget","Notes"]));
@@ -215,7 +214,7 @@ $("#exp").onclick=async()=>{const b=$("#exp"),lab=b.textContent;b.textContent="P
   else await dl.save({filename:base+".xlsx",data:buf});
  }catch(x){if(!x||x.code!=="declined")alert("Could not create the file: "+(x&&x.message||x))}
  b.textContent=lab};
-function render(){document.body.dataset.v=V;$("#home").hidden=V!=="project";$("#out").hidden=V==="login";$("h1").textContent=V==="project"?PN:"Client Selections";if(V==="project")return renderProject();$("#main").innerHTML=V==="login"?loginHtml():V==="setpw"?setpwHtml():projHtml()}
+function render(){document.body.dataset.v=V;$("#home").hidden=V!=="project";$("#out").hidden=V==="login"||!ME;$("h1").textContent=V==="project"?PN:"Client Selections";if(V==="project")return renderProject();$("#main").innerHTML=V==="login"?loginHtml():V==="setpw"?setpwHtml():projHtml()}
 const loginHtml=()=>'<div class="rooms"><h2>Sign in to your projects</h2><p class="lead">Use the email your designer invited. First time? Create an account with that same email.</p><div class="login"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="add"><button class="btn" id="login">Log in</button><button class="btn ghost" id="signup">Create account</button><button class="nav2" id="forgot">Forgot password?</button></div><p class="lead" id="msg"></p></div></div>';
 const setpwHtml=()=>'<div class="rooms"><h2>Choose your password</h2><p class="lead">Pick a password you will use to sign in from now on. At least 8 characters.</p><div class="login"><input id="np" type="password" placeholder="New password" autocomplete="new-password"><input id="np2" type="password" placeholder="Repeat password" autocomplete="new-password"><div class="add"><button class="btn" id="setpw">Save password</button></div><p class="lead" id="msg"></p></div></div>';
 const projHtml=()=>'<div class="rooms"><h2>Your projects</h2><p class="lead">'+esc(ME.email)+'</p><div class="add"><input id="pname" type="text" placeholder="New project name, e.g. Smith Residence"><button class="btn" id="newp">Create project</button></div>'+(PL.length?PL.map(p=>'<div class="prow"><button class="pcard" data-open="'+p.id+'" data-name="'+esc(p.name)+'"><b>'+esc(p.name)+'</b><span>'+(p.owner!==ME.id?esc(p.ownerEmail)+" \u00b7 ":"")+p.n+" of "+total+' items noted</span></button><button class="delp" data-delp="'+p.id+'" data-name="'+esc(p.name)+'" aria-label="Delete project">Delete</button></div>').join(""):'<p class="empty">No projects yet. Create your first one above.</p>')+"</div>";
@@ -226,12 +225,16 @@ M.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)re
  if(b.dataset.open)return openP(b.dataset.open,b.dataset.name);
  if(b.id==="login"||b.id==="signup"){const m=$("#msg");m.textContent="One moment\u2026";try{const em=$("#em").value.trim(),pw=$("#pw").value;if(b.id==="login"){ME=await Auth.login(em,pw);await showProjects()}else{await Auth.signup(em,pw);m.textContent="Check your email for a confirmation link, then log in."}}catch(x){m.textContent=x.message||"Something went wrong. Check your email and password."}}
  if(b.id==="forgot"){const m=$("#msg"),em=$("#em").value.trim();if(!em){m.textContent="Type your email above first.";return}try{await Auth.requestPasswordRecovery(em)}catch(x){}m.textContent="If that email has an account, a reset link is on its way. Check spam too."}
- if(b.id==="setpw"){const m=$("#msg"),p=$("#np").value;if(p.length<8){m.textContent="Use at least 8 characters.";return}if(p!==$("#np2").value){m.textContent="The two passwords do not match.";return}try{await Auth.updateUser({password:p});await showProjects()}catch(x){m.textContent=x.message||"Could not save the password. Try the reset link again."}}
+ if(b.id==="setpw"){const m=$("#msg"),p=$("#np").value;if(p.length<8){m.textContent="Use at least 8 characters.";return}if(p!==$("#np2").value){m.textContent="The two passwords do not match.";return}try{if(INV){ME=await Auth.acceptInvite(INV,p);INV=null}else await Auth.updateUser({password:p});await showProjects()}catch(x){m.textContent=x.message||"Could not save the password. Try the reset link again."}}
  if(b.id==="newp"){const n=$("#pname").value.trim();if(n){try{const p=await api("POST","/api/projects",{name:n});openP(p.id,p.name)}catch(x){alert(x.message)}}}});
 $("#home").onclick=async()=>{clearTimeout(t);await push();showProjects()};
 $("#out").onclick=async()=>{clearTimeout(t);await push();try{await Auth.logout()}catch(e){}ME=null;PID=null;V="login";render()};
 document.addEventListener("visibilitychange",()=>{if(document.hidden){clearTimeout(t);push()}});
-(async()=>{let r=null;try{r=await Auth.handleAuthCallback()}catch(e){}try{ME=(r&&r.user)||await Auth.getUser()}catch(e){}if(ME&&r&&(r.type==="recovery"||r.type==="invite")){V="setpw";render()}else if(ME)await showProjects();else render()})();
+let INV=null;
+(async()=>{let r=null;try{r=await Auth.handleAuthCallback()}catch(e){}
+ if(r&&r.type==="invite"&&r.token){INV=r.token;V="setpw";render();return}
+ try{ME=(r&&r.user)||await Auth.getUser()}catch(e){}
+ if(ME&&r&&r.type==="recovery"){V="setpw";render()}else if(ME)await showProjects();else render()})();
 </script>
 </body>
 </html>
