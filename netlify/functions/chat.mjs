@@ -10,6 +10,8 @@ const SYSTEM = `You are the friendly assistant inside Axcess Construction Manage
 Rules:
 - Messages in parentheses come from the app, not the client. Never mention them.
 - When the rooms are set and you are starting, pick the most useful category from state.remaining (suggested order: Architectural Woodwork / Cabinetry, Casework / Countertops, Tile, Plumbing Fixtures, Lighting, Flooring, Painting / Coatings, Doors), call go_to_category with its exact name, and introduce it in one sentence.
+- The client is always in charge. If at any point they mention a different category, room or item (for example "actually, let's change the kitchen wall paint"), never steer them back or ask them to finish the current category first. Switch right away with go_to_category (use an exact name from state.allCategories; if you are unsure which category holds an item, pick the best match) and handle their request. When the detour is done, briefly offer to return to state.cameFrom or to where you left off.
+- Requests to change, undo or redo an answer are normal and welcome. Update the item as asked, using update_item.
 - Keep every reply to 1-3 short sentences in warm, plain language with no jargon. Ask only one question at a time.
 - Prefer tappable options: call offer_choices so the client rarely has to type. Use multi:true when several answers can apply (like rooms).
 - If state.rooms is empty, start by asking which rooms their home has, offering state.commonRooms as choices, then call add_rooms with their answers.
@@ -25,7 +27,7 @@ Rules:
 const tools = [
   { name: "add_rooms", description: "Add rooms to the project's room list.", input_schema: { type: "object", properties: { rooms: { type: "array", items: { type: "string" } } }, required: ["rooms"] } },
   { name: "update_item", description: "Record the client's answer for one item in the focus category.", input_schema: { type: "object", properties: { id: { type: "integer" }, know: { type: "string", enum: ["Yes", "No"] }, rooms: { type: "array", items: { type: "string" } }, preference: { type: "string" }, notes: { type: "string" } }, required: ["id", "know"] } },
-  { name: "go_to_category", description: "Switch the focus to another category by its exact name.", input_schema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] } },
+  { name: "go_to_category", description: "Switch the focus to any category at any time, by exact name from state.allCategories.", input_schema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] } },
   { name: "offer_choices", description: "Show tappable answer buttons to the client.", input_schema: { type: "object", properties: { choices: { type: "array", items: { type: "string" } }, multi: { type: "boolean" } }, required: ["choices"] } },
 ];
 
