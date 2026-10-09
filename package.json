@@ -1,2 +1,16 @@
-{"name":"axcess-selections","private":true,"type":"module","scripts":{"build":"esbuild src/auth.js --bundle --minify --outfile=public/auth.js"},
-"dependencies":{"@netlify/blobs":"latest","@netlify/identity":"latest"},"devDependencies":{"esbuild":"^0.25.0"}}
+{
+ "name": "axcess-selections",
+ "private": true,
+ "type": "module",
+ "scripts": {
+  "build": "esbuild src/auth.js --bundle --minify --outfile=public/auth.js"
+ },
+ "dependencies": {
+  "@netlify/blobs": "latest",
+  "@netlify/identity": "latest",
+  "@anthropic-ai/sdk": "latest"
+ },
+ "devDependencies": {
+  "esbuild": "^0.25.0"
+ }
+}
